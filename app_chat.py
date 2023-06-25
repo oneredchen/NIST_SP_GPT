@@ -37,7 +37,7 @@ def setup_paths():
 def setup_vectorstore_agent(data_path, db_path):
     """Sets up the Langchain LLM to be used and returns a vectorstore agent."""
     llm = ChatOpenAI(
-        temperature=0.1,
+        temperature=0.9,
         verbose=True,
         model="gpt-3.5-turbo-16k",
         openai_api_key=OPENAI_API_KEY,
