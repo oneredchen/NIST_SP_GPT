@@ -54,7 +54,7 @@ The application uses a NIST database to provide relevant information. If the dat
 
 ### File Structure
 
-- `main.py`: The main script that runs the Streamlit application.
+- `app_chat.py`: The main script that runs the Streamlit application.
 - `raw_data/`: Directory containing the raw PDF documents.
 - `db/`: Directory containing the generated NIST database.
 
