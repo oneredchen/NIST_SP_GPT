@@ -1,8 +1,8 @@
 import os
 import time
-import traceback
-import logging
 import streamlit as st
+from streamlit_chat import message
+from streamlit_extras.colored_header import colored_header
 from dotenv import load_dotenv
 from langchain.chat_models import ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
@@ -20,8 +20,6 @@ load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-logging.basicConfig(level=logging.INFO)
-
 
 def setup_paths():
     """Sets up necessary paths and returns them. Creates the db directory if it doesn't exist."""
@@ -37,7 +35,7 @@ def setup_paths():
 def setup_vectorstore_agent(data_path, db_path):
     """Sets up the Langchain LLM to be used and returns a vectorstore agent."""
     llm = ChatOpenAI(
-        temperature=0.9,
+        temperature=0,
         verbose=True,
         model="gpt-3.5-turbo-16k",
         openai_api_key=OPENAI_API_KEY,
@@ -46,13 +44,11 @@ def setup_vectorstore_agent(data_path, db_path):
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
     if not os.path.exists(db_path):
-        logging.info("Existing NIST Database not found, generating NIST Database ...")
         loader = PyPDFDirectoryLoader(data_path)
         pages = loader.load_and_split()
         store = Chroma.from_documents(pages, embeddings, persist_directory=db_path)
         store.persist()
     else:
-        logging.info("Existing NIST Database found, loading NIST Database ...")
         store = Chroma(embedding_function=embeddings, persist_directory=db_path)
 
     vectorstore_info = VectorStoreInfo(
@@ -72,26 +68,56 @@ def setup_vectorstore_agent(data_path, db_path):
     return agent_executor, store
 
 
+# User input
+## Function for taking user provided prompt as input
+def get_text():
+    input_text = st.text_input("You: ", "", key="input")
+    return input_text
+
+
+# Response output
+## Function for taking user prompt as input followed by producing AI generated responses
+def generate_response(prompt, agent):
+    response = agent.run(input=prompt)
+    return response
+
+
 def main():
     startTime = time.time()
 
     data_path, db_path = setup_paths()
     agent_executor, store = setup_vectorstore_agent(data_path, db_path)
 
+    st.set_page_config(page_title="NIST GPT - Your NIST AI Consultant")
     st.title("🦜🔗 NIST SP GPT")
 
-    prompt = st.text_input("Input your prompt here")
+    if "generated" not in st.session_state:
+        st.session_state["generated"] = ["I'm NIST GPT, How may I help you?"]
+    if "past" not in st.session_state:
+        st.session_state["past"] = ["Hi!"]
 
-    if prompt:
-        try:
-            response = agent_executor.run(prompt)
-        except Exception as e:
-            response = f"Looks like the following error took place: {e}"
-            logging.error(traceback.format_exc())
-        st.write(response)
+    input_container = st.container()
+    colored_header(label="", description="", color_name="blue-30")
+    response_container = st.container()
+
+    ## Applying the user input box
+    with input_container:
+        user_input = get_text()
+
+    ## Conditional display of AI generated responses as a function of user provided prompts
+    with response_container:
+        if user_input:
+            response = generate_response(user_input, agent_executor)
+            st.session_state.past.append(user_input)
+            st.session_state.generated.append(response)
+
+        if st.session_state["generated"]:
+            for i in range(len(st.session_state["generated"])):
+                message(st.session_state["past"][i], is_user=True, key=str(i) + "_user")
+                message(st.session_state["generated"][i], key=str(i))
 
     executionTime = time.time() - startTime
-    logging.info(f"Execution time in seconds: {executionTime}")
+    print(f"Time taken: {executionTime}")
 
 
 if __name__ == "__main__":

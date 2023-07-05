@@ -70,6 +70,7 @@ def main():
     data_path, db_path = setup_paths()
     agent_executor, store = setup_vectorstore_agent(data_path, db_path)
 
+    st.set_page_config(page_title="NIST GPT - Your NIST AI Consultant")
     st.title("🦜🔗 NIST SP GPT")
 
     prompt = st.text_input("Input your prompt here")
